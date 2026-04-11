@@ -81,5 +81,7 @@ def visualize_with_labels(grid_colors, color_map, grid_size, cell_size=40):
                 1,
                 cv2.LINE_AA
             )
+    # 保存
+    cv2.imwrite("data/output.png", img)
 
     return img

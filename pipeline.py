@@ -49,17 +49,29 @@ def build_grid_2d(mapped, grid):
 
 def run_pipeline(image, visualize=True):
     # 1. 预处理
-    img = preprocess_image(image)
+    img_raw, img_detect = preprocess_image(image)
 
     # 2. 网格检测
-    grid = detect_grid(img)
+    grid = detect_grid(img_detect)
     print(f"Detected {len(grid)} grid cells")
 
+    h0, w0 = img_raw.shape[:2]
+    h1, w1 = img_detect.shape[:2]
+
+    scale_x = w0 / w1
+    scale_y = h0 / h1
+
+    grid_scaled = [
+        (int(x1*scale_x), int(y1*scale_y),
+        int(x2*scale_x), int(y2*scale_y))
+        for (x1, y1, x2, y2) in grid
+    ]
+
     # 3. 提取颜色
-    colors = extract_colors(img, grid)
+    colors = extract_colors(img_raw, grid_scaled)
 
     # 4. 映射色号
-    mapped = map_to_artkal(colors)
+    mapped = map_to_artkal_new(colors)
 
     # 5. 统计输出
     result = format_output(mapped)
@@ -118,7 +130,7 @@ def run_pipeline(image, visualize=True):
 
 if __name__ == "__main__":
     image = cv2.imread("data/test.jpeg")
-
+    
     result = run_pipeline(image, visualize=True)
 
     print("\n🎯 Color Summary:")

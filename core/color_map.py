@@ -2,7 +2,7 @@
 import json
 import numpy as np
 from functools import lru_cache
-#from skimage.color import rgb2lab, deltaE_ciede2000
+from skimage.color import rgb2lab, deltaE_ciede2000
 
 # ✅ 只加载一次
 @lru_cache(maxsize=1)

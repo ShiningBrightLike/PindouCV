@@ -9,9 +9,11 @@ def extract_colors(img, grid):
 
         # 取中心区域（避免边缘干扰）
         h, w, _ = cell.shape
-        center = cell[h//4:3*h//4, w//4:3*w//4]
+        margin = int(min(h, w) * 0.3)
+        center = cell[margin:h-margin, margin:w-margin]
 
         avg_color = np.mean(center.reshape(-1, 3), axis=0)
+        avg_color = avg_color[::-1] # BGR to RGB
         colors.append(avg_color)
 
     return colors
