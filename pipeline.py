@@ -5,8 +5,6 @@ from core.color_extract import extract_colors
 from core.color_map import map_to_artkal, map_to_artkal_new
 from core.postprocess import (
     format_output,
-    visualize_bead_result,
-    show_comparison,
     visualize_with_labels
 )
 
@@ -104,17 +102,7 @@ def run_pipeline(image, visualize=True):
 
         grid_size = (rows, cols)
 
-        # 🎨 1. 重建图
-        result_img = visualize_bead_result(
-            grid_colors,
-            color_map,
-            grid_size
-        )
-
-        # 🆚 2. 对比图
-        show_comparison(image, result_img)
-
-        # 🔤 3. 标注图
+        # 🔤 标注图
         label_img = visualize_with_labels(
             grid_colors,
             color_map,
@@ -129,7 +117,7 @@ def run_pipeline(image, visualize=True):
 
 
 if __name__ == "__main__":
-    image = cv2.imread("data/test.jpeg")
+    image = cv2.imread("data/test3.jpg")
     
     result = run_pipeline(image, visualize=True)
 

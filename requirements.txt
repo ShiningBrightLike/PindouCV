@@ -2,3 +2,4 @@ numpy==1.26.4
 opencv-python==4.13.0.92
 scikit-image==0.22.0
 pillow==10.3.0
+gradio==6.12.0
