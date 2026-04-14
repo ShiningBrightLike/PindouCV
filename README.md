@@ -20,7 +20,7 @@
 ```
 project/
 │
-├── app.py                # Gradio UI
+├── web.py                # Gradio UI
 ├── pipeline.py           # Main pipeline (entry point)
 │
 ├── core/
@@ -67,7 +67,7 @@ pip install gradio opencv-python numpy
 ### Run the application
 
 ```bash
-python app.py
+python web.py
 ```
 
 Then open the local URL shown in the terminal (usually `http://127.0.0.1:7860`) in your browser.

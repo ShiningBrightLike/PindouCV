@@ -11,21 +11,25 @@ from core.color_extract import extract_colors
 from core.color_map import map_to_artkal_new
 from core.postprocess import visualize_with_labels, format_output
 
+from utils.inventory import (
+    login,
+    register,
+    get_inventory,
+    use_inventory,
+    add_inventory,
+    inventory_to_list
+)
+
 
 # =========================
 # 🎨 颜色统计 HTML 渲染
 # =========================
-def render_color_stats(result, color_map):
-    """
-    生成 HTML 可视化颜色统计（卡片版）
-    """
-
-    # 按数量排序
+def render_color_stats(result, color_map, title="🎯 颜色统计"):
     result = sorted(result, key=lambda x: -x["count"])
 
-    html = """
+    html = f"""
     <div style="font-family: Arial;">
-    <h3>🎯 颜色统计</h3>
+    <h3>{title}</h3>
     <div style="display:flex; flex-wrap:wrap; gap:10px;">
     """
 
@@ -59,28 +63,22 @@ def render_color_stats(result, color_map):
         """
 
     html += "</div></div>"
-
     return html
 
 
 # =========================
-# 🚀 主 pipeline（Web版）
+# 🚀 pipeline（增加返回result）
 # =========================
 def pipeline_web(image):
 
     if image is None:
-        return None, "请上传图片"
+        return None, "请上传图片", None
 
-    # RGB → BGR
     image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
 
-    # ===== 1. 预处理 =====
     img_raw, img_detect = preprocess_image(image)
-
-    # ===== 2. 网格检测 =====
     grid = detect_grid(img_detect)
 
-    # ===== 坐标缩放 =====
     h0, w0 = img_raw.shape[:2]
     h1, w1 = img_detect.shape[:2]
 
@@ -93,72 +91,184 @@ def pipeline_web(image):
         for (x1, y1, x2, y2) in grid
     ]
 
-    # ===== 3. 颜色提取 =====
     colors = extract_colors(img_raw, grid_scaled)
-
-    # ===== 4. 映射色号 =====
     mapped = map_to_artkal_new(colors)
-
-    # ===== 5. 统计 =====
     result = format_output(mapped)
 
-    # ===== 构建 2D grid =====
     grid_colors = build_grid_2d(mapped, grid)
 
     rows = len(grid_colors)
     cols = max(len(r) for r in grid_colors)
 
-    # 补齐不规则
     for r in grid_colors:
         while len(r) < cols:
             r.append("UNKNOWN")
 
     grid_size = (rows, cols)
 
-    # ===== 读取色卡 =====
     with open("data/artkal_colors.json", "r") as f:
         color_data = json.load(f)
 
-    color_map = {
-        item["code"]: item["rgb"]
-        for item in color_data
-    }
+    color_map = {item["code"]: item["rgb"] for item in color_data}
 
-    # ===== 6. 可视化 =====
     label_img = visualize_with_labels(
         grid_colors,
         color_map,
         grid_size
     )
 
-    # BGR → RGB（给 Gradio）
     label_img = cv2.cvtColor(label_img, cv2.COLOR_BGR2RGB)
 
-    # ===== 7. HTML 统计 =====
     result_html = render_color_stats(result, color_map)
 
-    return label_img, result_html
+    return label_img, result_html, result  # ✅ 多返回一个 result
 
 
 # =========================
-# 🌐 Gradio UI
+# 🔐 登录
+# =========================
+def login_ui(username, password):
+    ok, msg = login(username, password)
+    if ok:
+        return username, f"✅ {msg}"
+    return None, f"❌ {msg}"
+
+
+# =========================
+# 🆕 注册
+# =========================
+def register_ui(username, password):
+    ok, msg = register(username, password)
+    if ok:
+        return f"✅ {msg}"
+    return f"❌ {msg}"
+
+
+# =========================
+# 📦 显示库存
+# =========================
+def show_inventory(username):
+    if not username:
+        return "请先登录"
+
+    inv = get_inventory(username)
+
+    with open("data/artkal_colors.json", "r") as f:
+        color_data = json.load(f)
+
+    color_map = {item["code"]: item["rgb"] for item in color_data}
+
+    inv_list = inventory_to_list(inv)
+
+    return render_color_stats(inv_list, color_map, "📦 当前库存")
+
+
+# =========================
+# ➖ 使用库存
+# =========================
+def use_result(username, result):
+    if not username:
+        return "请先登录"
+
+    ok, warning, inv = use_inventory(username, result)
+
+    msg = "✅ 已扣库存\n"
+    if warning:
+        msg += "\n".join(warning)
+
+    return msg
+
+
+# =========================
+# ➕ 手动加库存
+# =========================
+def add_stock(username, color, count):
+    if not username:
+        return "请先登录"
+
+    ok, msg, _ = add_inventory(username, color, int(count))
+    return msg
+
+
+# =========================
+# 🌐 UI
 # =========================
 with gr.Blocks() as demo:
-    gr.Markdown("## 🎨 拼豆图自动生成工具（Artkal Beads）")
 
+    user_state = gr.State(None)
+    result_state = gr.State(None)
+
+    gr.Markdown("## 🎨 拼豆图 + 库存管理系统")
+
+    # ===== 登录 =====
+    with gr.Row():
+        username = gr.Textbox(label="用户名")
+        password = gr.Textbox(label="密码", type="password")
+        login_btn = gr.Button("登录")
+        register_btn = gr.Button("注册")
+
+    login_msg = gr.Textbox(label="登录状态")
+
+    # ===== 主界面 =====
     with gr.Row():
         with gr.Column():
             input_img = gr.Image(label="上传图片", type="numpy")
-            btn = gr.Button("🚀 运行生成")
+            run_btn = gr.Button("🚀 识别")
+
+            use_btn = gr.Button("📉 使用本次结果（扣库存）")
 
         with gr.Column():
-            output_img = gr.Image(label="生成结果（带标注）")
+            output_img = gr.Image(label="识别结果")
             output_html = gr.HTML(label="颜色统计")
 
-    btn.click(
-        fn=pipeline_web,
+    # ===== 库存区 =====
+    gr.Markdown("## 📦 库存管理")
+
+    show_btn = gr.Button("刷新库存")
+    inventory_html = gr.HTML()
+
+    with gr.Row():
+        add_color = gr.Textbox(label="颜色编号（如 H2）")
+        add_count = gr.Number(label="数量")
+        add_btn = gr.Button("➕ 添加库存")
+
+    add_msg = gr.Textbox(label="操作结果")
+
+    # ===== 绑定 =====
+    login_btn.click(
+        login_ui,
+        inputs=[username, password],
+        outputs=[user_state, login_msg]
+    )
+
+    register_btn.click(
+        register_ui,
+        inputs=[username, password],
+        outputs=login_msg
+    )
+
+    run_btn.click(
+        pipeline_web,
         inputs=input_img,
-        outputs=[output_img, output_html]
+        outputs=[output_img, output_html, result_state]
+    )
+
+    use_btn.click(
+        use_result,
+        inputs=[user_state, result_state],
+        outputs=add_msg
+    )
+
+    show_btn.click(
+        show_inventory,
+        inputs=user_state,
+        outputs=inventory_html
+    )
+
+    add_btn.click(
+        add_stock,
+        inputs=[user_state, add_color, add_count],
+        outputs=add_msg
     )
 
 
@@ -166,4 +276,4 @@ with gr.Blocks() as demo:
 # 🚀 启动
 # =========================
 if __name__ == "__main__":
-    demo.launch(server_name="0.0.0.0", server_port=7860)
+    demo.launch(share=False) # http://localhost:7860
