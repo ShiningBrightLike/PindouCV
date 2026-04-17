@@ -34,6 +34,7 @@ project/
 │   └── artkal_colors.json  # Artkal color palette
 │
 └── utils/
+    ├── inventory.py
     └── image_utils.py
 ```
 
@@ -141,19 +142,6 @@ You can expand or modify this file to support more colors.
   * Switch to LAB color space for better accuracy
 * Add perspective correction for real-world images
 * Replace rule-based pipeline with ML models (future upgrade)
-
----
-
-## 📦 Packaging (Optional)
-
-To distribute as a standalone application:
-
-```bash
-pip install pyinstaller
-pyinstaller -F app.py
-```
-
-This will generate an executable file in the `dist/` folder.
 
 ---
 

@@ -1,3 +1,4 @@
+# web.py
 import gradio as gr
 import cv2
 import numpy as np
@@ -22,15 +23,14 @@ from utils.inventory import (
 
 
 # =========================
-# 🎨 颜色统计 HTML 渲染
+# 🎨 美化颜色统计
 # =========================
 def render_color_stats(result, color_map, title="🎯 颜色统计"):
-    result = sorted(result, key=lambda x: -x["count"])
 
     html = f"""
-    <div style="font-family: Arial;">
-    <h3>{title}</h3>
-    <div style="display:flex; flex-wrap:wrap; gap:10px;">
+    <div style="font-family:Arial;">
+    <h3 style="margin-bottom:10px;">{title}</h3>
+    <div style="display:grid; grid-template-columns:repeat(auto-fill,120px); gap:12px;">
     """
 
     for item in result:
@@ -42,23 +42,21 @@ def render_color_stats(result, color_map, title="🎯 颜色统计"):
 
         html += f"""
         <div style="
-            width:120px;
-            border-radius:10px;
+            border-radius:12px;
             padding:10px;
-            background:#f5f5f5;
+            background:white;
             text-align:center;
-            box-shadow:0 2px 5px rgba(0,0,0,0.1);
+            box-shadow:0 4px 12px rgba(0,0,0,0.08);
         ">
             <div style="
-                width:40px;
-                height:40px;
-                margin:auto;
+                width:42px;height:42px;margin:auto;
+                border-radius:8px;
                 background:rgb({r},{g},{b});
-                border:1px solid #000;
+                border:1px solid #ccc;
             "></div>
 
-            <div style="margin-top:5px; font-weight:bold;">{code}</div>
-            <div>{count}</div>
+            <div style="margin-top:6px;font-weight:bold;">{code}</div>
+            <div style="color:#666;">{count}</div>
         </div>
         """
 
@@ -67,10 +65,9 @@ def render_color_stats(result, color_map, title="🎯 颜色统计"):
 
 
 # =========================
-# 🚀 pipeline（增加返回result）
+# 🚀 pipeline
 # =========================
 def pipeline_web(image):
-
     if image is None:
         return None, "请上传图片", None
 
@@ -121,11 +118,11 @@ def pipeline_web(image):
 
     result_html = render_color_stats(result, color_map)
 
-    return label_img, result_html, result  # ✅ 多返回一个 result
+    return label_img, result_html, result
 
 
 # =========================
-# 🔐 登录
+# 🔐 账户逻辑
 # =========================
 def login_ui(username, password):
     ok, msg = login(username, password)
@@ -134,22 +131,17 @@ def login_ui(username, password):
     return None, f"❌ {msg}"
 
 
-# =========================
-# 🆕 注册
-# =========================
 def register_ui(username, password):
     ok, msg = register(username, password)
-    if ok:
-        return f"✅ {msg}"
-    return f"❌ {msg}"
+    return f"{'✅' if ok else '❌'} {msg}"
 
 
 # =========================
-# 📦 显示库存
+# 📦 库存
 # =========================
 def show_inventory(username):
     if not username:
-        return "请先登录"
+        return "⚠️ 请先登录"
 
     inv = get_inventory(username)
 
@@ -163,78 +155,94 @@ def show_inventory(username):
     return render_color_stats(inv_list, color_map, "📦 当前库存")
 
 
-# =========================
-# ➖ 使用库存
-# =========================
 def use_result(username, result):
     if not username:
-        return "请先登录"
+        return "⚠️ 请先登录"
 
-    ok, warning, inv = use_inventory(username, result)
+    ok, warning, _ = use_inventory(username, result)
 
-    msg = "✅ 已扣库存\n"
+    msg = "✅ 已扣库存"
     if warning:
-        msg += "\n".join(warning)
+        msg += "\n⚠️ 库存不足:\n" + "\n".join(warning)
 
     return msg
 
 
-# =========================
-# ➕ 手动加库存
-# =========================
 def add_stock(username, color, count):
     if not username:
-        return "请先登录"
+        return "⚠️ 请先登录"
 
     ok, msg, _ = add_inventory(username, color, int(count))
-    return msg
+    return f"{'✅' if ok else '❌'} {msg}"
 
 
 # =========================
 # 🌐 UI
 # =========================
-with gr.Blocks() as demo:
+with gr.Blocks(theme=gr.themes.Soft()) as demo:
 
     user_state = gr.State(None)
     result_state = gr.State(None)
 
-    gr.Markdown("## 🎨 拼豆图 + 库存管理系统")
+    gr.Markdown("# 🎨 拼豆图生成 & 库存管理系统")
 
-    # ===== 登录 =====
-    with gr.Row():
-        username = gr.Textbox(label="用户名")
-        password = gr.Textbox(label="密码", type="password")
-        login_btn = gr.Button("登录")
-        register_btn = gr.Button("注册")
+    with gr.Tabs():
 
-    login_msg = gr.Textbox(label="登录状态")
+        # ======================
+        # 🎯 识别页面
+        # ======================
+        with gr.Tab("🎯 图像识别"):
 
-    # ===== 主界面 =====
-    with gr.Row():
-        with gr.Column():
-            input_img = gr.Image(label="上传图片", type="numpy")
-            run_btn = gr.Button("🚀 识别")
+            with gr.Row():
 
-            use_btn = gr.Button("📉 使用本次结果（扣库存）")
+                with gr.Column(scale=1):
+                    gr.Markdown("### 📤 输入")
 
-        with gr.Column():
-            output_img = gr.Image(label="识别结果")
-            output_html = gr.HTML(label="颜色统计")
+                    input_img = gr.Image(type="numpy", label="上传图片")
+                    run_btn = gr.Button("🚀 开始识别", variant="primary")
+                    use_btn = gr.Button("📉 扣除库存")
 
-    # ===== 库存区 =====
-    gr.Markdown("## 📦 库存管理")
+                with gr.Column(scale=1):
+                    gr.Markdown("### 📊 输出")
 
-    show_btn = gr.Button("刷新库存")
-    inventory_html = gr.HTML()
+                    output_img = gr.Image(label="识别结果")
+                    output_html = gr.HTML()
 
-    with gr.Row():
-        add_color = gr.Textbox(label="颜色编号（如 H2）")
-        add_count = gr.Number(label="数量")
-        add_btn = gr.Button("➕ 添加库存")
+        # ======================
+        # 📦 库存页面
+        # ======================
+        with gr.Tab("📦 库存管理"):
 
-    add_msg = gr.Textbox(label="操作结果")
+            show_btn = gr.Button("🔄 刷新库存", variant="primary")
+            inventory_html = gr.HTML()
 
-    # ===== 绑定 =====
+            gr.Markdown("### ➕ 添加库存")
+
+            with gr.Row():
+                add_color = gr.Textbox(label="颜色编号")
+                add_count = gr.Number(label="数量")
+                add_btn = gr.Button("添加", variant="secondary")
+
+            add_msg = gr.Textbox(label="操作结果")
+
+        # ======================
+        # 🔐 用户页面
+        # ======================
+        with gr.Tab("🔐 用户"):
+
+            with gr.Row():
+                username = gr.Textbox(label="用户名")
+                password = gr.Textbox(label="密码", type="password")
+
+            with gr.Row():
+                login_btn = gr.Button("登录", variant="primary")
+                register_btn = gr.Button("注册")
+
+            login_msg = gr.Textbox(label="状态")
+
+    # ======================
+    # 🔗 绑定
+    # ======================
     login_btn.click(
         login_ui,
         inputs=[username, password],
@@ -256,7 +264,7 @@ with gr.Blocks() as demo:
     use_btn.click(
         use_result,
         inputs=[user_state, result_state],
-        outputs=add_msg
+        outputs=login_msg
     )
 
     show_btn.click(
@@ -276,4 +284,4 @@ with gr.Blocks() as demo:
 # 🚀 启动
 # =========================
 if __name__ == "__main__":
-    demo.launch(share=False) # http://localhost:7860
+    demo.launch()

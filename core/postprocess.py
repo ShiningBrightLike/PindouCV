@@ -2,6 +2,7 @@
 from collections import Counter
 import numpy as np
 import cv2
+import time
 
 
 def format_output(mapped_colors):
@@ -43,7 +44,9 @@ def visualize_with_labels(grid_colors, color_map, grid_size, cell_size=40):
                 1,
                 cv2.LINE_AA
             )
-    # 保存
-    cv2.imwrite("data/output.png", img)
+            
+    # 根据时间命名保存
+    timestamp = time.strftime("%Y%m%d_%H%M%S")
+    cv2.imwrite(f"data/output/output_{timestamp}.png", img)
 
     return img

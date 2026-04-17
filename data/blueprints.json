@@ -1,0 +1,86 @@
+{
+  "admin": [
+    {
+      "name": "test1",
+      "time": "2026-04-17 23:35",
+      "colors": [
+        {
+          "color": "C27",
+          "count": 673
+        },
+        {
+          "color": "H7",
+          "count": 134
+        },
+        {
+          "color": "F25",
+          "count": 60
+        },
+        {
+          "color": "C18",
+          "count": 53
+        },
+        {
+          "color": "G1",
+          "count": 26
+        },
+        {
+          "color": "G18",
+          "count": 18
+        },
+        {
+          "color": "A22",
+          "count": 12
+        },
+        {
+          "color": "F11",
+          "count": 11
+        },
+        {
+          "color": "D10",
+          "count": 10
+        },
+        {
+          "color": "A21",
+          "count": 9
+        },
+        {
+          "color": "E15",
+          "count": 4
+        },
+        {
+          "color": "D16",
+          "count": 4
+        },
+        {
+          "color": "C22",
+          "count": 2
+        },
+        {
+          "color": "G21",
+          "count": 2
+        },
+        {
+          "color": "H5",
+          "count": 2
+        },
+        {
+          "color": "E16",
+          "count": 1
+        },
+        {
+          "color": "H11",
+          "count": 1
+        },
+        {
+          "color": "H9",
+          "count": 1
+        },
+        {
+          "color": "H22",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}
