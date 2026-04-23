@@ -35,7 +35,7 @@ project/
 │
 └── utils/
     ├── inventory.py
-    └── image_utils.py
+    └── blueprint.py
 ```
 
 ---

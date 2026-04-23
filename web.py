@@ -20,6 +20,11 @@ from utils.inventory import (
     add_inventory,
     inventory_to_list
 )
+from utils.blueprint import (
+    save_blueprint,
+    get_blueprints,
+    render_blueprints
+)
 
 
 # =========================
@@ -176,6 +181,16 @@ def add_stock(username, color, count):
     return f"{'✅' if ok else '❌'} {msg}"
 
 
+def save_blueprint_ui(username, image):
+    ok, msg = save_blueprint(username, image)
+    return f"{'✅' if ok else '❌'} {msg}"
+
+
+def show_blueprints_ui(username):
+    bps = get_blueprints(username)
+    return render_blueprints(bps)
+
+
 # =========================
 # 🌐 UI
 # =========================
@@ -224,6 +239,22 @@ with gr.Blocks(theme=gr.themes.Soft()) as demo:
                 add_btn = gr.Button("添加", variant="secondary")
 
             add_msg = gr.Textbox(label="操作结果")
+
+        # ======================
+        # 📁 图纸管理
+        # ======================
+        with gr.Tab("📁 图纸管理"):
+
+            gr.Markdown("### 📤 上传图纸")
+
+            bp_input = gr.Image(type="numpy", label="上传图纸")
+            save_bp_btn = gr.Button("💾 保存图纸", variant="primary")
+            save_bp_msg = gr.Textbox(label="状态")
+
+            gr.Markdown("### 📚 我的图纸")
+
+            refresh_bp_btn = gr.Button("🔄 刷新图纸")
+            bp_gallery = gr.HTML()
 
         # ======================
         # 🔐 用户页面
@@ -277,6 +308,18 @@ with gr.Blocks(theme=gr.themes.Soft()) as demo:
         add_stock,
         inputs=[user_state, add_color, add_count],
         outputs=add_msg
+    )
+
+    save_bp_btn.click(
+        save_blueprint_ui,
+        inputs=[user_state, bp_input],
+        outputs=save_bp_msg
+    )
+
+    refresh_bp_btn.click(
+        show_blueprints_ui,
+        inputs=user_state,
+        outputs=bp_gallery
     )
 
 
