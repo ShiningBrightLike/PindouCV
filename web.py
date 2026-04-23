@@ -31,7 +31,6 @@ from utils.blueprint import (
 # 🎨 美化颜色统计
 # =========================
 def render_color_stats(result, color_map, title="🎯 颜色统计"):
-
     html = f"""
     <div style="font-family:Arial;">
     <h3 style="margin-bottom:10px;">{title}</h3>
@@ -74,7 +73,7 @@ def render_color_stats(result, color_map, title="🎯 颜色统计"):
 # =========================
 def pipeline_web(image):
     if image is None:
-        return None, "请上传图片", None
+        return None, "请上传图片", None, "⚠️ 请上传图片"
 
     image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
 
@@ -123,11 +122,11 @@ def pipeline_web(image):
 
     result_html = render_color_stats(result, color_map)
 
-    return label_img, result_html, result
+    return label_img, result_html, result, "✅ 识别完成"
 
 
 # =========================
-# 🔐 账户逻辑
+# 🔐 用户
 # =========================
 def login_ui(username, password):
     ok, msg = login(username, password)
@@ -181,6 +180,9 @@ def add_stock(username, color, count):
     return f"{'✅' if ok else '❌'} {msg}"
 
 
+# =========================
+# 📁 图纸
+# =========================
 def save_blueprint_ui(username, image):
     ok, msg = save_blueprint(username, image)
     return f"{'✅' if ok else '❌'} {msg}"
@@ -203,31 +205,23 @@ with gr.Blocks(theme=gr.themes.Soft()) as demo:
 
     with gr.Tabs():
 
-        # ======================
-        # 🎯 识别页面
-        # ======================
+        # 🎯 图像识别
         with gr.Tab("🎯 图像识别"):
-
             with gr.Row():
-
                 with gr.Column(scale=1):
                     gr.Markdown("### 📤 输入")
-
                     input_img = gr.Image(type="numpy", label="上传图片")
                     run_btn = gr.Button("🚀 开始识别", variant="primary")
                     use_btn = gr.Button("📉 扣除库存")
+                    detect_msg = gr.Textbox(label="操作结果")
 
                 with gr.Column(scale=1):
                     gr.Markdown("### 📊 输出")
-
                     output_img = gr.Image(label="识别结果")
                     output_html = gr.HTML()
 
-        # ======================
-        # 📦 库存页面
-        # ======================
+        # 📦 库存管理
         with gr.Tab("📦 库存管理"):
-
             show_btn = gr.Button("🔄 刷新库存", variant="primary")
             inventory_html = gr.HTML()
 
@@ -238,29 +232,23 @@ with gr.Blocks(theme=gr.themes.Soft()) as demo:
                 add_count = gr.Number(label="数量")
                 add_btn = gr.Button("添加", variant="secondary")
 
-            add_msg = gr.Textbox(label="操作结果")
+            inventory_msg = gr.Textbox(label="库存操作结果")
 
-        # ======================
         # 📁 图纸管理
-        # ======================
         with gr.Tab("📁 图纸管理"):
-
             gr.Markdown("### 📤 上传图纸")
 
             bp_input = gr.Image(type="numpy", label="上传图纸")
             save_bp_btn = gr.Button("💾 保存图纸", variant="primary")
-            save_bp_msg = gr.Textbox(label="状态")
+            bp_msg = gr.Textbox(label="图纸操作结果")
 
             gr.Markdown("### 📚 我的图纸")
 
             refresh_bp_btn = gr.Button("🔄 刷新图纸")
             bp_gallery = gr.HTML()
 
-        # ======================
-        # 🔐 用户页面
-        # ======================
+        # 🔐 用户
         with gr.Tab("🔐 用户"):
-
             with gr.Row():
                 username = gr.Textbox(label="用户名")
                 password = gr.Textbox(label="密码", type="password")
@@ -289,13 +277,13 @@ with gr.Blocks(theme=gr.themes.Soft()) as demo:
     run_btn.click(
         pipeline_web,
         inputs=input_img,
-        outputs=[output_img, output_html, result_state]
+        outputs=[output_img, output_html, result_state, detect_msg]
     )
 
     use_btn.click(
         use_result,
         inputs=[user_state, result_state],
-        outputs=login_msg
+        outputs=detect_msg
     )
 
     show_btn.click(
@@ -307,13 +295,13 @@ with gr.Blocks(theme=gr.themes.Soft()) as demo:
     add_btn.click(
         add_stock,
         inputs=[user_state, add_color, add_count],
-        outputs=add_msg
+        outputs=inventory_msg
     )
 
     save_bp_btn.click(
         save_blueprint_ui,
         inputs=[user_state, bp_input],
-        outputs=save_bp_msg
+        outputs=bp_msg
     )
 
     refresh_bp_btn.click(
