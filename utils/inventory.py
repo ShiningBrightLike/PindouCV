@@ -160,7 +160,7 @@ def add_inventory(username, color, count):
 
     save_users(users)
 
-    return True, "添加成功", inventory
+    return True, f"{color} 添加成功 🔢 库存现有 {inventory[color]}", inventory
 
 
 def batch_add_inventory(username, items):

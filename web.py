@@ -176,6 +176,16 @@ def add_stock(username, color, count):
     if not username:
         return "⚠️ 请先登录"
 
+    color = color.strip().upper()
+
+    with open("data/artkal_colors.json", "r") as f:
+        color_data = json.load(f)
+
+    valid_codes = set(item["code"] for item in color_data)
+
+    if color not in valid_codes:
+        return f"❌ 颜色编号错误：{color} 不存在"
+
     ok, msg, _ = add_inventory(username, color, int(count))
     return f"{'✅' if ok else '❌'} {msg}"
 
@@ -315,4 +325,4 @@ with gr.Blocks(theme=gr.themes.Soft()) as demo:
 # 🚀 启动
 # =========================
 if __name__ == "__main__":
-    demo.launch()
+    demo.launch(share=False)
