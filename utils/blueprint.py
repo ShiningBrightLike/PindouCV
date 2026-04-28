@@ -46,12 +46,60 @@ def save_blueprint(username, image):
     meta.append({
         "id": bp_id,
         "user": username,
-        "file": filename
+        "file": filename,
+        "name": f"图纸_{bp_id}"
     })
 
     _save_meta(meta)
 
     return True, "图纸已保存"
+
+
+def delete_blueprint(username, bp_id):
+    meta = _load_meta()
+
+    new_meta = []
+    deleted = False
+
+    for m in meta:
+        if m["id"] == bp_id and m["user"] == username:
+            file_path = os.path.join(BLUEPRINT_DIR, m["file"])
+            if os.path.exists(file_path):
+                os.remove(file_path)
+            deleted = True
+        else:
+            new_meta.append(m)
+
+    _save_meta(new_meta)
+
+    if deleted:
+        return True, "删除成功"
+    return False, "未找到图纸"
+
+
+def rename_blueprint(username, bp_id, new_name):
+    meta = _load_meta()
+
+    for m in meta:
+        if m["id"] == bp_id and m["user"] == username:
+            m["name"] = new_name
+            _save_meta(meta)
+            return True, "重命名成功"
+
+    return False, "未找到图纸"
+
+
+def get_blueprint_image(bp_id):
+    meta = _load_meta()
+
+    for m in meta:
+        if m["id"] == bp_id:
+            path = os.path.join(BLUEPRINT_DIR, m["file"])
+            if os.path.exists(path):
+                img = cv2.imread(path)
+                return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+    return None
 
 
 # =========================
@@ -68,37 +116,6 @@ def get_blueprints(username):
 # =========================
 # 🎨 渲染图纸列表
 # =========================
-def render_blueprints_old(blueprints):
-    if not blueprints:
-        return "<p>暂无图纸</p>"
-
-    html = """
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,160px);gap:16px;">
-    """
-
-    for bp in blueprints:
-        img_path = f"data/blueprints/{bp['file']}"
-
-        html += f"""
-        <div style="
-            background:white;
-            border-radius:12px;
-            padding:10px;
-            box-shadow:0 4px 12px rgba(0,0,0,0.08);
-            text-align:center;
-        ">
-            <img src="{img_path}" style="width:100%;border-radius:8px;" />
-            <div style="margin-top:6px;font-size:12px;color:#666;">
-                ID: {bp['id']}
-            </div>
-        </div>
-        """
-
-    html += "</div>"
-    return html
-
-
-
 def render_blueprints(blueprints):
     if not blueprints:
         return "<p>暂无图纸</p>"
@@ -126,6 +143,10 @@ def render_blueprints(blueprints):
                  style="width:100%;border-radius:8px;" />
 
             <div style="margin-top:6px;font-size:12px;color:#666;">
+                {bp.get("name", "未命名")}
+            </div>
+
+            <div style="font-size:10px;color:#aaa;">
                 ID: {bp['id']}
             </div>
         </div>

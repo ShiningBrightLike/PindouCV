@@ -25,7 +25,7 @@ from utils.blueprint import (
     get_blueprints,
     render_blueprints
 )
-
+from utils.blueprint import rename_blueprint, delete_blueprint, get_blueprint_image
 
 # =========================
 # 🎨 美化颜色统计
@@ -203,6 +203,25 @@ def show_blueprints_ui(username):
     return render_blueprints(bps)
 
 
+def rename_bp_ui(username, bp_id, new_name):
+    if not username:
+        return "⚠️ 请先登录"
+
+    ok, msg = rename_blueprint(username, bp_id, new_name)
+    return f"{'✅' if ok else '❌'} {msg}"
+
+
+def delete_bp_ui(username, bp_id):
+    if not username:
+        return "⚠️ 请先登录"
+
+    ok, msg = delete_blueprint(username, bp_id)
+    return f"{'✅' if ok else '❌'} {msg}"
+
+
+def view_bp_ui(bp_id):
+    return get_blueprint_image(bp_id)
+
 # =========================
 # 🌐 UI
 # =========================
@@ -246,16 +265,27 @@ with gr.Blocks(theme=gr.themes.Soft()) as demo:
 
         # 📁 图纸管理
         with gr.Tab("📁 图纸管理"):
-            gr.Markdown("### 📤 上传图纸")
 
+            gr.Markdown("### 📚 我的图纸")
+            refresh_bp_btn = gr.Button("🔄 刷新图纸")
+            bp_gallery = gr.HTML()
+        
+            with gr.Row():
+                selected_bp = gr.Textbox(label="选中图纸ID")
+                rename_input = gr.Textbox(label="新名称")
+            
+            with gr.Row():
+                view_btn = gr.Button("🔍 放大查看")
+                delete_btn = gr.Button("🗑 删除")
+                rename_btn = gr.Button("✏️ 重命名")
+
+            bp_view = gr.Image(label="图纸预览（放大）")
+
+            gr.Markdown("### 📤 上传图纸")
             bp_input = gr.Image(type="numpy", label="上传图纸")
             save_bp_btn = gr.Button("💾 保存图纸", variant="primary")
             bp_msg = gr.Textbox(label="图纸操作结果")
-
-            gr.Markdown("### 📚 我的图纸")
-
-            refresh_bp_btn = gr.Button("🔄 刷新图纸")
-            bp_gallery = gr.HTML()
+            
 
         # 🔐 用户
         with gr.Tab("🔐 用户"):
@@ -318,6 +348,24 @@ with gr.Blocks(theme=gr.themes.Soft()) as demo:
         show_blueprints_ui,
         inputs=user_state,
         outputs=bp_gallery
+    )
+
+    rename_btn.click(
+        rename_bp_ui,
+        inputs=[user_state, selected_bp, rename_input],
+        outputs=bp_msg
+    )
+
+    delete_btn.click(
+        delete_bp_ui,
+        inputs=[user_state, selected_bp],
+        outputs=bp_msg
+    )
+
+    view_btn.click(
+        view_bp_ui,
+        inputs=selected_bp,
+        outputs=bp_view
     )
 
 
