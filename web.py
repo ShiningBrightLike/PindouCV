@@ -210,10 +210,6 @@ def delete_bp_ui(username, bp_id):
     return f"{'✅' if ok else '❌'} {msg}"
 
 
-def view_bp_ui(bp_id):
-    return get_blueprint_image(bp_id)
-
-
 # =========================
 # 🌐 UI
 # =========================
@@ -223,7 +219,7 @@ with gr.Blocks(theme=gr.themes.Soft()) as demo:
     result_state = gr.State(None)
     bp_state = gr.State([])
 
-    gr.Markdown("# 🎨 拼豆图生成系统")
+    gr.Markdown("# 🎨 拼豆图纸管理系统")
 
     with gr.Tabs():
 
@@ -272,13 +268,10 @@ with gr.Blocks(theme=gr.themes.Soft()) as demo:
                     selected_bp = gr.Textbox(label="选中图纸ID", interactive=False)
                     rename_input = gr.Textbox(label="新名称")
 
-                    view_btn = gr.Button("查看")
                     rename_btn = gr.Button("重命名")
                     delete_btn = gr.Button("删除")
 
                     bp_msg = gr.Textbox(label="图纸操作结果")
-
-                    bp_view = gr.Image(label="预览")
 
                     bp_input = gr.Image(type="numpy")
                     save_bp_btn = gr.Button("保存图纸")
@@ -288,8 +281,9 @@ with gr.Blocks(theme=gr.themes.Soft()) as demo:
 
         # 🔐 用户
         with gr.Tab("🔐 用户"):
-            username = gr.Textbox(label="用户名")
-            password = gr.Textbox(label="密码", type="password")
+            with gr.Row():
+                username = gr.Textbox(label="用户名")
+                password = gr.Textbox(label="密码", type="password")
 
             with gr.Row():
                 login_btn = gr.Button("登录", variant="primary")
@@ -345,8 +339,6 @@ with gr.Blocks(theme=gr.themes.Soft()) as demo:
         [user_state, selected_bp],
         bp_msg
     )
-
-    view_btn.click(view_bp_ui, selected_bp, bp_view)
 
 
 # =========================
