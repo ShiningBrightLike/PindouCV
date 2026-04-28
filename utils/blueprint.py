@@ -4,26 +4,44 @@ import json
 import uuid
 import cv2
 import base64
+from threading import Lock
 
 BLUEPRINT_DIR = "data/blueprints"
 META_FILE = os.path.join(BLUEPRINT_DIR, "meta.json")
 
 os.makedirs(BLUEPRINT_DIR, exist_ok=True)
 
+# 🔒 文件锁
+blueprint_lock = Lock()
+
 
 # =========================
-# 📦 工具函数
+# 📦 工具函数（内部用）
 # =========================
-def _load_meta():
+def _load_meta_unlocked():
     if not os.path.exists(META_FILE):
         return []
     with open(META_FILE, "r", encoding="utf-8") as f:
-        return json.load(f)
+        try:
+            return json.load(f)
+        except:
+            return []
 
 
-def _save_meta(meta):
+def _save_meta_unlocked(meta):
     with open(META_FILE, "w", encoding="utf-8") as f:
         json.dump(meta, f, ensure_ascii=False, indent=2)
+
+
+def _atomic_meta_update(update_fn):
+    """
+    🔥 所有 meta 修改必须走这里
+    """
+    with blueprint_lock:
+        meta = _load_meta_unlocked()
+        result = update_fn(meta)
+        _save_meta_unlocked(meta)
+        return result
 
 
 # =========================
@@ -33,88 +51,96 @@ def save_blueprint(username, image):
     if username is None:
         return False, "请先登录"
 
-    meta = _load_meta()
+    def _update(meta):
+        bp_id = str(uuid.uuid4())[:8]
+        filename = f"{bp_id}.png"
+        path = os.path.join(BLUEPRINT_DIR, filename)
 
-    bp_id = str(uuid.uuid4())[:8]
-    filename = f"{bp_id}.png"
-    path = os.path.join(BLUEPRINT_DIR, filename)
+        # ✅ 先写文件（仍在锁内，保证一致性）
+        image_bgr = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+        cv2.imwrite(path, image_bgr)
 
-    # 保存图片
-    image_bgr = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-    cv2.imwrite(path, image_bgr)
+        meta.append({
+            "id": bp_id,
+            "user": username,
+            "file": filename,
+            "name": f"图纸_{bp_id}"
+        })
 
-    meta.append({
-        "id": bp_id,
-        "user": username,
-        "file": filename,
-        "name": f"图纸_{bp_id}"
-    })
+        return True, "图纸已保存"
 
-    _save_meta(meta)
-
-    return True, "图纸已保存"
+    return _atomic_meta_update(_update)
 
 
+# =========================
+# 🗑 删除图纸
+# =========================
 def delete_blueprint(username, bp_id):
-    meta = _load_meta()
+    def _update(meta):
+        new_meta = []
+        deleted = False
 
-    new_meta = []
-    deleted = False
+        for m in meta:
+            if m["id"] == bp_id and m["user"] == username:
+                file_path = os.path.join(BLUEPRINT_DIR, m["file"])
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+                deleted = True
+            else:
+                new_meta.append(m)
 
-    for m in meta:
-        if m["id"] == bp_id and m["user"] == username:
-            file_path = os.path.join(BLUEPRINT_DIR, m["file"])
-            if os.path.exists(file_path):
-                os.remove(file_path)
-            deleted = True
-        else:
-            new_meta.append(m)
+        meta.clear()
+        meta.extend(new_meta)
 
-    _save_meta(new_meta)
+        if deleted:
+            return True, "删除成功"
+        return False, "未找到图纸"
 
-    if deleted:
-        return True, "删除成功"
-    return False, "未找到图纸"
+    return _atomic_meta_update(_update)
 
 
+# =========================
+# ✏️ 重命名
+# =========================
 def rename_blueprint(username, bp_id, new_name):
-    meta = _load_meta()
+    def _update(meta):
+        for m in meta:
+            if m["id"] == bp_id and m["user"] == username:
+                m["name"] = new_name
+                return True, "重命名成功"
+        return False, "未找到图纸"
 
-    for m in meta:
-        if m["id"] == bp_id and m["user"] == username:
-            m["name"] = new_name
-            _save_meta(meta)
-            return True, "重命名成功"
-
-    return False, "未找到图纸"
+    return _atomic_meta_update(_update)
 
 
+# =========================
+# 📖 查询（读也加锁）
+# =========================
 def get_blueprint_image(bp_id):
-    meta = _load_meta()
+    with blueprint_lock:
+        meta = _load_meta_unlocked()
 
-    for m in meta:
-        if m["id"] == bp_id:
-            path = os.path.join(BLUEPRINT_DIR, m["file"])
-            if os.path.exists(path):
-                img = cv2.imread(path)
-                return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        for m in meta:
+            if m["id"] == bp_id:
+                path = os.path.join(BLUEPRINT_DIR, m["file"])
+                if os.path.exists(path):
+                    img = cv2.imread(path)
+                    return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
     return None
 
 
-# =========================
-# 📖 获取图纸
-# =========================
 def get_blueprints(username):
     if username is None:
         return []
 
-    meta = _load_meta()
-    return [m for m in meta if m["user"] == username]
+    with blueprint_lock:
+        meta = _load_meta_unlocked()
+        return [m for m in meta if m["user"] == username]
 
 
 # =========================
-# 🎨 渲染图纸列表
+# 🎨 渲染图纸列表（读文件）
 # =========================
 def render_blueprints(blueprints):
     if not blueprints:
@@ -124,10 +150,15 @@ def render_blueprints(blueprints):
     <div style="display:grid;grid-template-columns:repeat(auto-fill,160px);gap:16px;">
     """
 
+    # ⚠️ 这里不建议全局锁，否则UI会卡
+    # 👉 单个文件读即可（文件系统本身安全）
+
     for bp in blueprints:
         img_path = f"data/blueprints/{bp['file']}"
 
-        # 👉 转 base64
+        if not os.path.exists(img_path):
+            continue
+
         with open(img_path, "rb") as f:
             img_base64 = base64.b64encode(f.read()).decode()
 
